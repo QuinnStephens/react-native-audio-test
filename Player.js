@@ -7,6 +7,8 @@ import {
   View
 } from 'react-native'
 import Sound from 'react-native-sound'
+import reactMixin from 'react-mixin'
+import TimerMixin from 'react-timer-mixin'
 
 export default class Player extends Component {
 
@@ -16,14 +18,22 @@ export default class Player extends Component {
     Sound.setCategory('Playback')
 
     this.clip = null
+    this.updateProgress = this.updateProgress.bind(this)
     this.togglePlaying = this.togglePlaying.bind(this)
     this.loadClip = this.loadClip.bind(this)
     this.buttonImage = this.buttonImage.bind(this)
+    this.progressBarWidth = this.progressBarWidth.bind(this)
     this.state = {
-      playing: false
+      playing: false,
+      progress: 0,
+      progressBackgroundWidth: 0
     }
 
     this.loadClip()
+  }
+
+  componentDidMount() {
+    this.updateProgress()
   }
 
   componentWillReceiveProps(nextProps) {
@@ -40,14 +50,50 @@ export default class Player extends Component {
   render() {
     return (
       <View style={styles.container}>
-        <TouchableHighlight onPress={this.togglePlaying}>
-          <Image source={this.buttonImage()} style={styles.playButton}/>
-        </TouchableHighlight>
-        <Text style={styles.title}>
-          {this.props.title}
-        </Text>
+        <View style={styles.topRow}>
+          <TouchableHighlight onPress={this.togglePlaying} underlayColor='transparent'>
+            <Image source={this.buttonImage()} style={styles.playButton}/>
+          </TouchableHighlight>
+          <Text style={styles.title}>
+            {this.props.title}
+          </Text>
+        </View>
+        <View style={styles.bottomRow} onLayout={(event) => {
+          var {x, y, width, height} = event.nativeEvent.layout
+          this.setState({
+            progressBackgroundWidth: width
+          })
+        }}>
+          <View style={{
+            backgroundColor: 'white',
+            height: 8,
+            width: this.progressBarWidth()
+          }}>
+          </View>
+        </View>
       </View>
     )
+  }
+
+  updateProgress() {
+    if (this.clip) {
+      this.clip.getCurrentTime((seconds) => {
+        let progress = seconds / this.clip.getDuration()
+        this.setState({ progress })
+      })
+    } else {
+      this.setState({
+        progress: 0
+      })
+    }
+    this.setTimeout(
+      this.updateProgress,
+      500
+    )
+  }
+
+  progressBarWidth() {
+    return Math.round(this.state.progress * this.state.progressBackgroundWidth)
   }
 
   buttonImage() {
@@ -87,11 +133,23 @@ export default class Player extends Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    flexDirection: 'column',
+    backgroundColor: '#2299aa',
+    padding: 12,
+  },
+  topRow: {
+    backgroundColor: 'transparent',
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    backgroundColor: '#2299aa',
-    padding: 24,
+  },
+  bottomRow: {
+    alignItems: 'center',
+    backgroundColor: '#118899',
+    flexDirection: 'row',
+    height: 8,
+    justifyContent: 'flex-start',
   },
   playButton: {
     height: 64,
@@ -104,3 +162,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
 })
+
+// Use react-mixin to allow mixins in ES6
+reactMixin(Player.prototype, TimerMixin)
